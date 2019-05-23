@@ -11,6 +11,7 @@ from typing import Dict, Any
 import logging
 import os.path as osp
 import time
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +115,8 @@ class TensorBoardWrapper(TensorBoard):
 
 
 class ModelCheckpoint(keras.callbacks.ModelCheckpoint):
-    last_epoch: int
-    last_logs: Dict[str, Any]
+    last_epoch: Optional[int] = None
+    last_logs: Optional[Dict[str, Any]] = None
 
     def __init__(self, *args, state_file=None, **kwargs, ):
         super(ModelCheckpoint, self).__init__(*args, **kwargs)
