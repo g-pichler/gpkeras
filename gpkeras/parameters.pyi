@@ -3,6 +3,8 @@ import argparse
 
 class TrainingParameters:
     params: List[str]
+    formatted_params: List[str]
+    evaluated_params: List[str]
 
     run: str
     model: str

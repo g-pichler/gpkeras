@@ -69,7 +69,6 @@ class TrainingParameters(object):
                         'log_dir',
                         'checkpoint_file',
                         'state_file',
-                        'dataset_directory',
                         'best_checkpoint_file',
                         'best_state_file',
                         'load_weights'
