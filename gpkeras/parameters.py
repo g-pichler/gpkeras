@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 def get_argument_parser(description='Training Parameters'):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--model", type=str, required=True, help="The model to use")
-    parser.add_argument("--trainer", type=str, required=True, help="The trainer to use")
     parser.add_argument("--dataset", type=str, required=True, help="The dataset to use")
 
-    parser.add_argument("--run", type=str, help="Run ID (dt, args are formatted)",
+    parser.add_argument("--trainer", type=str, default="{args.model}Trainer", help="The trainer to use")
+    parser.add_argument("--run", type=str, help="Run ID",
                         default="{args.dt:%Y-%m-%dT%H:%M:%S}")
 
     parser.add_argument("--optimizer", type=str, default="adam")
@@ -66,12 +66,13 @@ def get_argument_parser(description='Training Parameters'):
 
 class TrainingParameters(object):
     formatted_params = ['run',
+                        'trainer',
                         'log_dir',
                         'checkpoint_file',
                         'state_file',
                         'best_checkpoint_file',
                         'best_state_file',
-                        'load_weights'
+                        'load_weights',
                         ]
 
     evaluated_params = [
