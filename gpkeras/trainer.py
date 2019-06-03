@@ -82,13 +82,15 @@ class Trainer:
         signal.signal(signal.SIGHUP, exit_handler)
         signal.signal(signal.SIGINT, exit_handler)
 
-        for stage in Stages:
-            logger.debug("Starting stage \"{stage.name}\"".format(stage=stage))
+        for current_stage in Stages:
+            logger.debug("Starting stage \"{stage.name}\"".format(stage=current_stage))
             try:
-                self._execute_stage(stage)
+                self._execute_stage(current_stage)
             except (SystemExit, Exception):
-                logger.error('An exception occured. Running cleanup stage...')
-                self._execute_stage(Stages.cleanup)
+                logger.error('An exception occured...')
+                if current_stage is not Stages.cleanup:
+                    logger.info('Running cleanup stage...')
+                    self._execute_stage(Stages.cleanup)
                 raise
 
 
@@ -231,8 +233,8 @@ class KerasTrainer(Trainer):
         if self._tensorboard:
             tensorboard_write_text(text=re.sub("^", "\t",
                                                "Arguments: \n{}".format(
-                                                   str(self._args))
-                                               , flags=re.M),
+                                                   str(self._args)),
+                                               flags=re.M),
                                    name="Arguments",
                                    log_dir=self._args.log_dir,
                                    global_step=self._args.initial_epoch,

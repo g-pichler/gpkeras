@@ -110,7 +110,9 @@ class TrainingParameters(object):
         for param in self.params:
             self.param_dict[param] = getattr(args, param)
 
-        logging.basicConfig(level=getattr(logging, args.loglevel.upper()))
+        logging.basicConfig(level=getattr(logging, args.loglevel.upper()),
+                            format='[%(asctime)s] %(levelname)s [%(name)s] %(message)s',
+                            )
         self.dt = datetime.now()
 
         for param in self.formatted_params:
