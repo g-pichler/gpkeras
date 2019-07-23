@@ -110,6 +110,12 @@ class TrainingParameters(object):
         for param in self.params:
             self.param_dict[param] = getattr(args, param)
 
+        # Logging bug workaround
+        # https://github.com/tensorflow/tensorflow/issues/26691
+        import absl.logging
+        logging.root.removeHandler(absl.logging._absl_handler)
+        absl.logging._warn_preinit_stderr = False
+
         logging.basicConfig(level=getattr(logging, args.loglevel.upper()),
                             format='[%(asctime)s] %(levelname)s [%(name)s] %(message)s',
                             )
