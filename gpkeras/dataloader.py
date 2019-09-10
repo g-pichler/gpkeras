@@ -8,8 +8,10 @@ import math
 import os
 import nibabel as nib
 #from scipy.ndimage import zoom
-from .util import normalize, get_statistics
+from gpkeras.util import normalize, get_statistics
 from typing import Union, List, Tuple, Iterable, Optional
+from PIL import Image
+import PIL
 
 import random
 import logging
@@ -332,6 +334,147 @@ class NiftiSequence_2D(keras.utils.Sequence):
         if self._shuffle:
             random.shuffle(self._idxs)
 
+
+class ImageSequence(keras.utils.Sequence):
+    '''
+    A Keras Sequence that slices Nifti images up into 2D slices
+    '''
+
+    def __init__(self,
+                 data_list: List[Tuple[str, ...]],
+                 label_list: List[Tuple[str, ...]],
+                 basedir='.',
+                 dim=(128, 128),
+                 delta=None,
+                 data_transforms=(None,),
+                 label_transforms=(None,),
+                 weight_function=None,
+                 shuffle=True,
+                 horizontal_flip=True,
+                 vertical_flip=True,
+                 expand_channel_dim=True,
+                 ):
+        '''
+
+                :param data_list: list of lists of data files in basedir
+                :param label_list: list of lists of label files in basedir
+                :param basedir: basedir for looking for nifti files
+                :param dim: tuple of dimension for 2D slices
+                :param delta: tuple for 2D shift between slices
+                :param data_transforms: tuple of transform functions applied on data
+                :param label_transforms: tuple of transform functions applied on labels
+                :param weight_function: function to calculate weight of slice from data and label
+                :param shuffle: should slices be shuffled on_epoch_end
+                :param horizontal_flip: random horizontal flips
+                :param vertical_flip: random vertical flips
+                :param normalize: normalize data by subtracting mean and dividing by std deviation
+                :param avoid_ram: if set to True, apply te transforms in the __getitem__ function
+                :param expand_channel_dim: if set to True and the fourth/channel dimension does not exist,
+                                           it is expanded.
+                '''
+
+        self._transforms = tuple([tuple([t if t is not None else lambda x: x for t in transforms])
+                                  for transforms in (data_transforms, label_transforms)])
+
+        def get_weight(x, y):
+            return [1.0] * len(y) if weight_function is None else weight_function(x, y)
+
+        self._items: List[List[List[np.ndarray]]] = list()
+        self._statistics: List[List[Tuple[float, float]]] = list()
+        self._shuffle = shuffle
+        self._dim = dim
+        self._delta = delta if delta is not None else tuple([d // 2 for d in dim])
+        self._horizontal_flip = horizontal_flip
+        self._vertical_flip = vertical_flip
+        self._expand_channel_dim = expand_channel_dim
+        self._normalize = normalize
+
+        assert len(data_list) == len(label_list)
+
+        for i in range(len(data_list)):
+            data_filenames = data_list[i]
+            label_filenames = label_list[i]
+
+            files = [[os.path.join(basedir, f) for f in filenames]
+                     for filenames in (data_filenames, label_filenames)]
+
+            images_pil: List[List[Image.Image]] = [[Image.open(f) for f in fs] for fs in files]
+
+            #imgs_data = [[np.array(img) for img in imgs] for imgs in images_pil]
+
+            size = images_pil[0][0].size
+            for imgs in images_pil:
+                assert all([img.size == size for img in imgs])
+
+            out = list()
+            for k in range(2):
+                imgs = images_pil[k]
+                out1 = list()
+                for j in range(len(imgs)):
+                    img = imgs[j]
+                    img = img.resize(self._dim, Image.BILINEAR if k < 1 else Image.NEAREST)
+                    img = np.array(img)
+                    out1.append(img)
+
+                out.append(out1)
+            self._items.append(out)
+
+        self._idxs = list(range(len(self._items)))
+
+        # Shuffle at the very beginning as well
+        self._shuffle_me()
+
+    def __len__(self) -> int:
+        '''
+        Length of the Sequence
+        :return: length
+        '''
+        return len(self._items)
+
+    def on_epoch_end(self):
+        '''
+        Called at the end of the epoch
+
+        :return: None
+        '''
+        self._shuffle_me()
+
+    def _shuffle_me(self):
+        '''
+        Shuffles the slices if shuffling is enabled
+        :return: None
+        '''
+        if self._shuffle:
+            random.shuffle(self._idxs)
+
+    def __getitem__(self, item: int):
+        '''
+        Gets the item.
+        If avoid_ram is enabled the (possible) normalization and transformation also happens here
+        :param item: number of the item
+        :return: list of lists of numpy arrays
+        '''
+
+        items = self._items[self._idxs[item]]
+
+        if self._horizontal_flip and random.getrandbits(1):
+            items = [[np.flip(i, axis=0) for i in items1] for items1 in items[:2]] + items[2:]
+        if self._vertical_flip and random.getrandbits(1):
+            items = [[np.flip(i, axis=1) for i in items1] for items1 in items[:2]] + items[2:]
+        return items
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    c = ImageSequence(basedir="/home/georg/work/learning-data/ir_seg/ir_seg_dataset",
+                      data_list=[('images/rgb/00001D.png', 'images/ir/00001D.png',),],
+                      label_list=[('labels/00001D.png',)],
+                      )
+
+    for a, b in c:
+        for im in a + b:
+            plt.imshow(im)
+            plt.show()
 
 # if __name__ == '__main__':
     # import matplotlib.pyplot as plt

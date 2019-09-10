@@ -8,6 +8,7 @@ from typing import List, Tuple
 from .preprocessing import change_labels
 from keras.utils import to_categorical
 import logging
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,26 @@ def get_label_frequencies_nii(label_list: List,
     for i, lfile in enumerate(label_list):
         print("{}/{}: {}...".format(i + 1, len(label_list), lfile))
         label_tensor = np.asarray(nib.load(lfile).dataobj)
+        if label_merging:
+            label_tensor = change_labels(label_tensor, label_merging)
+        lbls, counts = np.unique(label_tensor, return_counts=True)
+        for k, l in enumerate(lbls):
+            freq[l] += counts[k]
+        total += np.prod(label_tensor.shape)
+    return np.reshape(freq/total, (n_labels,))
+
+def get_label_frequencies_img(label_list: List,
+                              label_merging: Tuple = None,
+                              n_labels: int = None):
+    assert label_merging is not None or n_labels is not None
+
+    if label_merging:
+        n_labels = len(label_merging)
+    freq = np.zeros((n_labels,), dtype=np.uint64)
+    total = 0
+    for i, lfile in enumerate(label_list):
+        print("{}/{}: {}...".format(i + 1, len(label_list), lfile))
+        label_tensor = np.array(Image.open(lfile))
         if label_merging:
             label_tensor = change_labels(label_tensor, label_merging)
         lbls, counts = np.unique(label_tensor, return_counts=True)
