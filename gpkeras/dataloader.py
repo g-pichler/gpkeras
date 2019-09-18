@@ -350,8 +350,8 @@ class ImageSequence(keras.utils.Sequence):
                  label_transforms=(None,),
                  weight_function=None,
                  shuffle=True,
-                 horizontal_flip=True,
-                 vertical_flip=True,
+                 horizontal_flip=False,
+                 vertical_flip=False,
                  expand_channel_dim=True,
                  ):
         '''
@@ -367,8 +367,6 @@ class ImageSequence(keras.utils.Sequence):
                 :param shuffle: should slices be shuffled on_epoch_end
                 :param horizontal_flip: random horizontal flips
                 :param vertical_flip: random vertical flips
-                :param normalize: normalize data by subtracting mean and dividing by std deviation
-                :param avoid_ram: if set to True, apply te transforms in the __getitem__ function
                 :param expand_channel_dim: if set to True and the fourth/channel dimension does not exist,
                                            it is expanded.
                 '''
@@ -414,9 +412,15 @@ class ImageSequence(keras.utils.Sequence):
                     img = imgs[j]
                     img = img.resize(self._dim, Image.BILINEAR if k < 1 else Image.NEAREST)
                     img = np.array(img)
+                    img = img.transpose((1, 0) if len(img.shape) == 2 else (1, 0, 2))
+                    img = self._transforms[k][j](img)
                     out1.append(img)
 
                 out.append(out1)
+
+            # Weight
+            out.append(get_weight(out[0], out[1]))
+
             self._items.append(out)
 
         self._idxs = list(range(len(self._items)))
