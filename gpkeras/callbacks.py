@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class TensorBoardImage(keras.callbacks.Callback):
-    def __init__(self, generate_image_fkt, tag="Image", log_dir="./log_dir"):
+    def __init__(self, generate_image_fkt, tags=("Image"), log_dir="./log_dir"):
         super().__init__()
-        self._tag = tag
+        self._tags = tags
         self._generate_img_fkt = generate_image_fkt
         self._log_dir = log_dir
 
@@ -55,13 +55,17 @@ class TensorBoardImage(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
         # Load image
-        img = self._generate_img_fkt()
+        imgs = self._generate_img_fkt()
 
-        image = self._make_image(img)
-        summary = tf.Summary(value=[tf.Summary.Value(tag=self._tag, image=image)])
-        writer = tf.summary.FileWriter(self._log_dir)
-        writer.add_summary(summary, epoch)
-        writer.close()
+        if not isinstance(imgs, (list, tuple)):
+            imgs = [imgs]
+
+        for tag, img in zip(self._tags, imgs):
+            image = self._make_image(img)
+            summary = tf.Summary(value=[tf.Summary.Value(tag=tag, image=image)])
+            writer = tf.summary.FileWriter(self._log_dir)
+            writer.add_summary(summary, epoch)
+            writer.close()
 
         return
 
